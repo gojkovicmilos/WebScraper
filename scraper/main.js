@@ -16,12 +16,15 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 let articlesDB = [];
+let tagsDB = [];
 
 let tagsTotal = new Map();
 
 let articlesDocRef = firebase.firestore().collection("articles");
 
-const getData = (list) =>
+let tagsDocRef = firebase.firestore().collection('tags');
+
+const getArticles = (list) =>
   articlesDocRef
     .get()
     .then((querySnapshot) => {
@@ -38,7 +41,23 @@ const getData = (list) =>
       console.log("Error getting documents: ", error);
     });
 
-// getData(articlesDB).then(() => console.log(articlesDB));
+const getTags = (list) =>
+    tagsDocRef
+      .get()
+      .then((querySnapshot) => {
+        querySnapshot.forEach((doc) => {
+          list.push({
+            id: doc.id,
+            ...doc.data(),
+          });
+          // console.log(doc.id, " => ", doc.data());
+        });
+        return list;
+      })
+      .catch((error) => {
+        console.log("Error getting documents: ", error);
+      });
+
 
 const danas = async () => {
   const browser = await puppeteer.launch();
@@ -111,8 +130,8 @@ const danas = async () => {
 
     if (
       articlesDB.filter(
-        (element) => element.title === titleText && element.source === "Danas"
-      ).empty
+        (element) => element.title === titleText
+      ).length === 0
     ) {
       articlesDocRef
         .add({
@@ -120,10 +139,11 @@ const danas = async () => {
           content: text,
           tags: tagsReal,
           source: "Danas",
+          url: link
         })
         .then((ref) => console.log("Added Document with ID: ", ref.id));
     } else {
-      // console.log('Already in DB!!!');
+      console.log('Already in DB!!!');
       oldNews += 1;
     }
 
@@ -132,7 +152,7 @@ const danas = async () => {
 
   await browser.close();
 
-  console.log("Danas finished loading " + data.length + " articles");
+  console.log("Danas finished loading " + data.length + " articles, " + data.length-oldNews + " of which are new");
 
   return articles;
 };
@@ -241,6 +261,8 @@ const juzne = async () => {
     "div.list-by-date.mt20.mb20 > ul.article-list > li.ofh.mb5 > h3.list_by_date_title.title.article-list__title.dibvm.fz16"
   );
 
+  let oldNews = 0;
+
   for (let i = 0; i < articlesRef.length; i++) {
     try {
       await page.goto(
@@ -317,7 +339,7 @@ const juzne = async () => {
         articlesDB.filter(
           (element) =>
             element.title === titleText && element.source === "Juzne Vesti"
-        ).empty
+        ).length === 0
       ) {
         articlesDocRef
           .add({
@@ -329,12 +351,13 @@ const juzne = async () => {
           })
           .then((ref) => console.log("Added Document with ID: ", ref.id));
       } else {
-        // console.log('Already in DB!!!');
+        console.log('Already in DB!!!');
+      oldNews += 1;
       }
     } catch (error) {}
   }
 
-  console.log("Juzne finished loading " + articlesRef.length + " articles");
+  console.log("Juzne finished loading " + articlesRef.length + " articles, " + articlesRef.length-oldNews + " of which are new");
 
   await browser.close();
 
@@ -359,49 +382,109 @@ class Article {
   }
 }
 
-let allArticles = [];
+// let allArticles = [];
 
-const initDB = () => getData(articlesDB);
+const initDB = async () => {await getArticles(articlesDB); await getTags(tagsDB) };
 
-const initData = () =>
-  initDB()
-    .then(() => danas())
-    .then((articles) => allArticles.push(articles))
-    .then(() => juzne())
-    .then((articles) => allArticles.push(articles));
 
-initDB()
-  .then(() => initData())
-  .then(() => initDB())
-  .then(() => {
-    let allTags = new Map();
+const writeKeys = () =>{
 
-    let dbTags = [];
-    const tagLists = articlesDB.map((element) => element.tags);
-    dbTags = tagLists.flat();
+        let allTags = new Map();
 
-    dbTags.map((res) =>
-      allTags.has(res)
-        ? allTags.set(res, allTags.get(res) + 1)
-        : allTags.set(res, 1)
-    );
+        let dbTags = [];
+        const tagLists = articlesDB.map((element) => element.tags);
+        dbTags = tagLists.flat();
 
-    // console.log(allTags);
+        dbTags.map((res) =>
+          allTags.has(res)
+            ? allTags.set(res, allTags.get(res) + 1)
+            : allTags.set(res, 1)
+        );
 
-    for (let k of allTags.keys()) {
-      if (allTags.get(k) < 5) allTags.delete(k);
-    }
+        for (let k of allTags.keys()) {
+          if (allTags.get(k) < 10) allTags.delete(k);
+        }
 
-    let keyNews = {};
 
-    allTags.forEach(
-      (v, k) => (keyNews[k] = articlesDB.filter((key) => key.tags.includes(k)))
-    );
+        const keys = Array.from(allTags.keys());
 
-    console.log(keyNews);
+        console.log(allTags);
 
-    return;
-  })
-  .then(() => {
-    return 0;
-  });
+
+
+        keys.forEach(key => {console.log(key);try{if (
+          tagsDB.filter(
+            (element) =>
+              element.title === key
+          ).length === 0
+        ) {
+          tagsDocRef
+            .add({
+              title: key,
+            })
+            .then((ref) => console.log("Added Document with ID: ", ref.id));
+        } else {
+          console.log('Already in DB!!!');
+        }
+      }catch(e){}});
+
+        
+
+
+
+}
+
+// const initData = () =>
+//   initDB()
+//     .then(() => danas())
+//     .then((articles) => allArticles.push(articles))
+//     .then(() => juzne())
+//     .then((articles) => allArticles.push(articles));
+
+// initDB()
+//   .then(() => initData())
+//   .then(() => initDB())
+//   .then(() => {
+//     let allTags = new Map();
+
+//     let dbTags = [];
+//     const tagLists = articlesDB.map((element) => element.tags);
+//     dbTags = tagLists.flat();
+
+//     dbTags.map((res) =>
+//       allTags.has(res)
+//         ? allTags.set(res, allTags.get(res) + 1)
+//         : allTags.set(res, 1)
+//     );
+
+//     // console.log(allTags);
+
+//     for (let k of allTags.keys()) {
+//       if (allTags.get(k) < 5) allTags.delete(k);
+//     }
+
+//     let keyNews = {};
+
+//     allTags.forEach(
+//       (v, k) => (keyNews[k] = articlesDB.filter((key) => key.tags.includes(k)))
+//     );
+
+//     console.log(keyNews);
+
+//     return;
+//   })
+//   .then(() => {
+//     return 0;
+//   });
+
+// danas();
+
+const run = async () =>{
+  await initDB();
+  // await juzne();
+  // await danas();
+  await writeKeys();
+  return 0;
+}
+
+run();
