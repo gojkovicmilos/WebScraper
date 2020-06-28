@@ -481,8 +481,7 @@ const writeKeys = () =>{
 
 const run = async () =>{
   await initDB();
-  // await juzne();
-  // await danas();
+  await Promise.all([juzne(), danas()]);
   await writeKeys();
   return 0;
 }
