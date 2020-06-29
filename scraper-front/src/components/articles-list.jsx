@@ -64,7 +64,7 @@ function useArticles() {
   const [articles, setArticles] = useState([]);
 
   useEffect(() => {
-    firestore.collection("articles").onSnapshot((snapshot) => {
+    firestore.collection("arts").onSnapshot((snapshot) => {
       const newArticles = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -133,8 +133,14 @@ const ArticlesList = () => {
                   color="textSecondary"
                   gutterBottom
                 >
-                  Source: {article.source}
+                  Source: {article.source}  
+
                 </Typography>
+                <Typography
+                  className={classes.title}
+                  color="textSecondary"
+                  gutterBottom
+                >Sentiment: {article.sentiment}</Typography>
                 <Typography variant="h5" component="h2">
                   <a href={article.url}>{article.title}</a>
                 </Typography>

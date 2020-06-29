@@ -1,6 +1,8 @@
 const puppeteer = require("puppeteer");
 const firebase = require("firebase");
-
+const { SentimentAnalyzer } = require('node-nlp');
+const translate = require('@vitalets/google-translate-api')
+const sentiment = new SentimentAnalyzer({ language: 'en' });
 const firebaseConfig = {
   apiKey: "AIzaSyDgL_6B5_EVkeJljC8qC05anG55rb9b27U",
   authDomain: "scrapervesti.firebaseapp.com",
@@ -20,7 +22,7 @@ let tagsDB = [];
 
 let tagsTotal = new Map();
 
-let articlesDocRef = firebase.firestore().collection("articles");
+let articlesDocRef = firebase.firestore().collection("arts");
 
 let tagsDocRef = firebase.firestore().collection('tags');
 
@@ -133,16 +135,29 @@ const danas = async () => {
         (element) => element.title === titleText
       ).length === 0
     ) {
+      let tt = await translate(titleText, {to: 'en'});
+      console.log(tt);
+
+      let sent = await sentiment.getSentiment(tt.text);
+      console.log(sent)
+
       articlesDocRef
         .add({
           title: titleText,
           content: text,
           tags: tagsReal,
           source: "Danas",
-          url: link
+          url: link,
+          sentiment: sent.score,
         })
         .then((ref) => console.log("Added Document with ID: ", ref.id));
     } else {
+      // let tt = await translate(titleText, {to: 'en'});
+
+      // let sent = await sentiment.getSentiment(tt.text);
+
+      // console.log(sent);
+
       console.log('Already in DB!!!');
       oldNews += 1;
     }
@@ -341,6 +356,9 @@ const juzne = async () => {
             element.title === titleText && element.source === "Juzne Vesti"
         ).length === 0
       ) {
+      let tt = await translate(titleText, {to: 'en'});
+
+      let sent = await sentiment.getSentiment(tt.text);
         articlesDocRef
           .add({
             title: titleText,
@@ -348,9 +366,12 @@ const juzne = async () => {
             tags: tags,
             source: "Juzne Vesti",
             url: link,
+            sentiment: sent.score,
+
           })
           .then((ref) => console.log("Added Document with ID: ", ref.id));
       } else {
+        // console.log(sentiment(text));
         console.log('Already in DB!!!');
       oldNews += 1;
       }
@@ -478,6 +499,8 @@ const writeKeys = () =>{
 //   });
 
 // danas();
+
+
 
 const run = async () =>{
   await initDB();

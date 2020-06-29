@@ -9,7 +9,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "firebase": "^7.15.1",
-    "puppeteer": "^3.3.0"
+    "@vitalets/google-translate-api": "^3.0.0",
+    "firebase": "^7.15.5",
+    "google-translate-api": "^2.3.0",
+    "node-nlp": "^4.8.0",
+    "puppeteer": "^3.3.0",
+    "sentiment-multi-language": "^1.0.4"
+  },
+  "devDependencies": {
+    "google-translate-token": "^1.0.0"
   }
 }
